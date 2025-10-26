@@ -1,6 +1,32 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
+import os
+
+# Configure writable caches for read-only environments (e.g., Vercel). Must run before importing ML libs.
+CACHE_ROOT = os.environ.get("EMBED_CACHE_ROOT", "/tmp")
+if (
+    os.environ.get("VERCEL") == "1"
+    or os.environ.get("READ_ONLY_FS") == "1"
+    or not os.access("/", os.W_OK)
+):
+    hf_home = os.environ.setdefault("HF_HOME", os.path.join(CACHE_ROOT, "hf"))
+    os.environ.setdefault("HUGGINGFACE_HUB_CACHE", os.path.join(hf_home, "hub"))
+    os.environ.setdefault("TRANSFORMERS_CACHE", os.path.join(hf_home, "transformers"))
+    os.environ.setdefault("HF_DATASETS_CACHE", os.path.join(hf_home, "datasets"))
+    os.environ.setdefault("XDG_CACHE_HOME", os.path.join(CACHE_ROOT, "cache"))
+    # Best-effort create dirs; ignore failures in restricted envs
+    for key in (
+        "HF_HOME",
+        "HUGGINGFACE_HUB_CACHE",
+        "TRANSFORMERS_CACHE",
+        "HF_DATASETS_CACHE",
+        "XDG_CACHE_HOME",
+    ):
+        try:
+            os.makedirs(os.environ[key], exist_ok=True)
+        except Exception:
+            pass
 
 from fastembed import TextEmbedding
 
